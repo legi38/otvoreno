@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'screens/main_shell.dart';
-import 'theme/app_theme.dart';
+
+import 'core/theme/app_theme.dart';
+import 'features/map/presentation/map_home_screen.dart';
 
 class OtvorenoApp extends StatelessWidget {
   const OtvorenoApp({super.key});
@@ -12,8 +13,7 @@ class OtvorenoApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
-      home: const MainShell(),
+      home: const MapHomeScreen(),
     );
   }
 }
