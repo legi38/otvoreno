@@ -12,9 +12,20 @@ class StoreMarker extends StatelessWidget {
   final StorePlace store;
   final bool selected;
 
+  Color _statusColor() {
+    switch (store.openStatus) {
+      case StoreOpenStatus.open:
+        return Colors.green;
+      case StoreOpenStatus.closed:
+        return Colors.red;
+      case StoreOpenStatus.unknown:
+        return Colors.orange;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final color = store.isOpen ? Colors.green : Colors.red;
+    final color = _statusColor();
 
     return AnimatedScale(
       scale: selected ? 1.18 : 1,

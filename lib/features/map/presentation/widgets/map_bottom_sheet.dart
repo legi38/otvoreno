@@ -12,6 +12,7 @@ class MapBottomSheet extends StatelessWidget {
     required this.visibleStores,
     required this.selectedStore,
     required this.onStoreTap,
+    required this.onRetry,
   });
 
   final bool loading;
@@ -19,13 +20,14 @@ class MapBottomSheet extends StatelessWidget {
   final List<StoreWithDistance> visibleStores;
   final StorePlace? selectedStore;
   final ValueChanged<StorePlace> onStoreTap;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
       initialChildSize: 0.31,
       minChildSize: 0.18,
-      maxChildSize: 0.72,
+      maxChildSize: 0.76,
       builder: (context, scrollController) {
         return Container(
           decoration: BoxDecoration(
@@ -56,18 +58,36 @@ class MapBottomSheet extends StatelessWidget {
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  Text('${visibleStores.length}'),
+                  if (loading)
+                    const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  else
+                    Text('${visibleStores.length}'),
                 ],
               ),
               const SizedBox(height: 6),
               if (loading)
-                const Text('Tražim tvoju lokaciju...')
+                const Text('Dohvaćam stvarna mjesta iz OpenStreetMapa...')
               else if (error != null)
-                Text(error!, style: const TextStyle(color: Colors.red))
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(error!, style: const TextStyle(color: Colors.red)),
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Pokušaj ponovno'),
+                    ),
+                  ],
+                )
               else
-                const Text('Sprint 4: kod je sada razdvojen u čistu arhitekturu.'),
+                const Text('Stvarni podaci iz OpenStreetMapa. Radno vrijeme ćemo potvrđivati u sljedećem sprintu.'),
               const SizedBox(height: 14),
-              if (visibleStores.isEmpty)
+              if (!loading && visibleStores.isEmpty && error == null)
                 const _EmptyState()
               else
                 ...visibleStores.map(

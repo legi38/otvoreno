@@ -25,29 +25,24 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
   final _mapController = MapController();
   final _searchController = TextEditingController();
   final _locationService = LocationService();
-  final _storeRepository = MockStoreRepository();
+  final _storeRepository = OverpassStoreRepository();
 
   LatLng? _userLocation;
-  bool _loading = true;
-  String? _error;
+  bool _locationLoading = true;
+  bool _storesLoading = false;
+  String? _locationError;
+  String? _storesError;
   StoreCategory _selectedCategory = StoreCategory.all;
   String _query = '';
   StorePlace? _selectedStore;
+  List<StoreWithDistance> _visibleStores = const [];
 
   LatLng get _currentLocation => _userLocation ?? AppConstants.defaultLocation;
-
-  List<StoreWithDistance> get _visibleStores {
-    return _storeRepository.searchStores(
-      userLocation: _currentLocation,
-      category: _selectedCategory,
-      query: _query,
-    );
-  }
 
   @override
   void initState() {
     super.initState();
-    _loadLocation();
+    _loadLocationAndStores();
   }
 
   @override
@@ -56,10 +51,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
     super.dispose();
   }
 
-  Future<void> _loadLocation() async {
+  Future<void> _loadLocationAndStores() async {
     setState(() {
-      _loading = true;
-      _error = null;
+      _locationLoading = true;
+      _locationError = null;
     });
 
     final result = await _locationService.getCurrentLocation();
@@ -69,13 +64,43 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
     if (result.isSuccess) {
       setState(() {
         _userLocation = result.location;
-        _loading = false;
+        _locationLoading = false;
       });
       _mapController.move(result.location!, 14);
     } else {
       setState(() {
-        _error = result.error;
-        _loading = false;
+        _locationError = result.error;
+        _locationLoading = false;
+      });
+    }
+
+    await _loadStores();
+  }
+
+  Future<void> _loadStores() async {
+    setState(() {
+      _storesLoading = true;
+      _storesError = null;
+      _selectedStore = null;
+    });
+
+    try {
+      final stores = await _storeRepository.searchStores(
+        userLocation: _currentLocation,
+        category: _selectedCategory,
+        query: _query,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _visibleStores = stores;
+        _storesLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _storesError = 'Ne mogu dohvatiti mjesta. Provjeri internet i pokušaj ponovno.';
+        _storesLoading = false;
       });
     }
   }
@@ -89,9 +114,20 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
     _mapController.move(store.position, 15.5);
   }
 
+  Future<void> _changeCategory(StoreCategory category) async {
+    setState(() => _selectedCategory = category);
+    await _loadStores();
+  }
+
+  Future<void> _changeQuery(String value) async {
+    setState(() => _query = value);
+    await _loadStores();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final visibleStores = _visibleStores;
+    final isLoading = _locationLoading || _storesLoading;
+    final error = _locationError ?? _storesError;
 
     return Scaffold(
       body: Stack(
@@ -120,7 +156,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
               ),
               MarkerLayer(
                 markers: [
-                  ...visibleStores.map(
+                  ..._visibleStores.map(
                     (item) => Marker(
                       point: item.store.position,
                       width: 54,
@@ -166,14 +202,12 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
                 children: [
                   SearchBox(
                     controller: _searchController,
-                    onChanged: (value) => setState(() => _query = value),
+                    onChanged: _changeQuery,
                   ),
                   const SizedBox(height: 10),
                   CategoryFilters(
                     selectedCategory: _selectedCategory,
-                    onSelected: (category) {
-                      setState(() => _selectedCategory = category);
-                    },
+                    onSelected: _changeCategory,
                   ),
                 ],
               ),
@@ -181,11 +215,12 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
           ),
           LocationButton(onPressed: _centerOnUser),
           MapBottomSheet(
-            loading: _loading,
-            error: _error,
-            visibleStores: visibleStores,
+            loading: isLoading,
+            error: error,
+            visibleStores: _visibleStores,
             selectedStore: _selectedStore,
             onStoreTap: _selectStore,
+            onRetry: _loadStores,
           ),
         ],
       ),
