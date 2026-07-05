@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../shared/models/store_category.dart';
 import '../../../shared/models/store_place.dart';
 import '../../../shared/models/store_with_distance.dart';
+import '../domain/opening_hours_evaluator.dart';
 
 abstract class StoreRepository {
   Future<List<StoreWithDistance>> searchStores({
@@ -19,6 +20,7 @@ class OverpassStoreRepository implements StoreRepository {
   OverpassStoreRepository({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+  final OpeningHoursEvaluator _openingHoursEvaluator = OpeningHoursEvaluator();
   static const _radiusMeters = 5000;
   static final _endpoint = Uri.parse('https://overpass-api.de/api/interpreter');
 
@@ -125,6 +127,8 @@ class OverpassStoreRepository implements StoreRepository {
     final id = '${element['type']}-${element['id']}';
     final category = _categoryFromTags(tags);
     final address = _addressFromTags(tags);
+    final openingHours = tags['opening_hours'] as String?;
+    final openingStatus = _openingHoursEvaluator.evaluate(openingHours);
 
     return StorePlace(
       id: id,
@@ -132,8 +136,12 @@ class OverpassStoreRepository implements StoreRepository {
       position: LatLng(lat, lon),
       category: category,
       address: address,
-      openingHours: tags['opening_hours'] as String?,
-      openStatus: StoreOpenStatus.unknown,
+      openingHours: openingHours,
+      openStatus: openingStatus.status,
+      openUntil: openingStatus.timeHint,
+      statusLabel: openingStatus.label,
+      timeHint: openingStatus.timeHint,
+      confidenceLabel: openingStatus.confidenceLabel,
       source: 'OpenStreetMap',
     );
   }

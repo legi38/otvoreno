@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../shared/models/store_place.dart';
 import '../../../../shared/models/store_with_distance.dart';
@@ -34,15 +35,30 @@ class StoreCard extends StatelessWidget {
   }
 
   String _statusText(StorePlace store) {
+    if (store.statusLabel != null && store.statusLabel!.isNotEmpty) {
+      return store.statusLabel!;
+    }
+
     switch (store.openStatus) {
       case StoreOpenStatus.open:
-        return store.openUntil == null ? 'Otvoreno' : 'Otvoreno do ${store.openUntil}';
+        return store.openUntil == null ? 'Otvoreno' : 'Otvoreno · ${store.openUntil}';
       case StoreOpenStatus.closed:
         return store.openUntil == null ? 'Zatvoreno' : 'Zatvoreno · otvara u ${store.openUntil}';
       case StoreOpenStatus.unknown:
         return store.openingHours == null
             ? 'Radno vrijeme nije potvrđeno'
             : 'OSM: ${store.openingHours}';
+    }
+  }
+
+  Future<void> _openNavigation() async {
+    final store = item.store;
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${store.position.latitude},${store.position.longitude}&travelmode=driving',
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -85,13 +101,23 @@ class StoreCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _statusText(store),
-                      style: TextStyle(color: statusColor, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: statusColor, fontWeight: FontWeight.w700),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (store.timeHint != null && store.openStatus == StoreOpenStatus.open) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        store.timeHint!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: statusColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Text(
-                      'Izvor: ${store.source}',
+                      store.confidenceLabel,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -99,7 +125,7 @@ class StoreCard extends StatelessWidget {
               ),
               IconButton(
                 tooltip: 'Navigacija',
-                onPressed: () {},
+                onPressed: _openNavigation,
                 icon: Transform.rotate(
                   angle: -math.pi / 4,
                   child: const Icon(Icons.navigation),

@@ -14,6 +14,9 @@ class StorePlace {
     this.openStatus = StoreOpenStatus.unknown,
     this.openUntil,
     this.openingHours,
+    this.statusLabel,
+    this.timeHint,
+    this.confidenceLabel = 'Podatak iz OpenStreetMap-a',
     this.source = 'OpenStreetMap',
   });
 
@@ -24,6 +27,9 @@ class StorePlace {
   final StoreOpenStatus openStatus;
   final String? openUntil;
   final String? openingHours;
+  final String? statusLabel;
+  final String? timeHint;
+  final String confidenceLabel;
   final String address;
   final String source;
 
